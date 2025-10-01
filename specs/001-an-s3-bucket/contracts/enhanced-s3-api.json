@@ -1,0 +1,293 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Enhanced S3 API Interface",
+    "version": "1.1.0",
+    "description": "Contract for S3 API interactions with enhanced timestamp handling"
+  },
+  "paths": {
+    "/bucket-scan": {
+      "get": {
+        "summary": "Scan S3 bucket for objects with enhanced metadata",
+        "description": "List all objects in bucket with normalized lastModified timestamps",
+        "parameters": [
+          {
+            "name": "bucketName",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "includeTimestamps",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "description": "Include normalized lastModified timestamps"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bucket scan completed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BucketScanResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied to bucket",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bucket not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metadata/{objectKey}": {
+      "get": {
+        "summary": "Fetch metadata with S3 object timestamp",
+        "description": "Retrieve metadata.json content with associated S3 object lastModified",
+        "parameters": [
+          {
+            "name": "objectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": ".*\\.metadata\\.json$"
+            },
+            "description": "S3 object key for metadata.json file"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metadata retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Metadata file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/objects/timestamps": {
+      "post": {
+        "summary": "Get timestamps for multiple objects",
+        "description": "Batch retrieve lastModified timestamps for object keys",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimestampRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Timestamps retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimestampResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EnhancedS3Object": {
+        "type": "object",
+        "required": ["Key", "Size", "LastModified"],
+        "properties": {
+          "Key": {
+            "type": "string",
+            "minLength": 1,
+            "description": "S3 object key/path"
+          },
+          "Size": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Object size in bytes"
+          },
+          "LastModified": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Normalized lastModified timestamp"
+          },
+          "ETag": {
+            "type": "string",
+            "description": "S3 entity tag"
+          },
+          "isMetadata": {
+            "type": "boolean",
+            "description": "Whether object is metadata.json file"
+          },
+          "isDataFile": {
+            "type": "boolean",
+            "description": "Whether object is dataset data file"
+          }
+        }
+      },
+      "BucketScanResponse": {
+        "type": "object",
+        "required": ["objects", "metadata"],
+        "properties": {
+          "objects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnhancedS3Object"
+            }
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/ScanMetadata"
+          }
+        }
+      },
+      "ScanMetadata": {
+        "type": "object",
+        "properties": {
+          "totalObjects": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "metadataFiles": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "dataFiles": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "scanTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bucketName": {
+            "type": "string"
+          }
+        }
+      },
+      "MetadataResponse": {
+        "type": "object",
+        "required": ["content", "objectInfo"],
+        "properties": {
+          "content": {
+            "type": "object",
+            "description": "Parsed schema.org Dataset JSON content"
+          },
+          "objectInfo": {
+            "$ref": "#/components/schemas/EnhancedS3Object"
+          },
+          "parseSuccess": {
+            "type": "boolean",
+            "description": "Whether JSON parsing succeeded"
+          },
+          "parseError": {
+            "type": "string",
+            "description": "JSON parsing error message if applicable"
+          }
+        }
+      },
+      "TimestampRequest": {
+        "type": "object",
+        "required": ["objectKeys"],
+        "properties": {
+          "objectKeys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "maxItems": 100,
+            "description": "List of S3 object keys to get timestamps for"
+          }
+        }
+      },
+      "TimestampResponse": {
+        "type": "object",
+        "required": ["timestamps"],
+        "properties": {
+          "timestamps": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Map of object key to lastModified timestamp"
+          },
+          "notFound": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Object keys that were not found"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error", "message"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error type"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "objectKey": {
+            "type": "string",
+            "description": "Related S3 object key if applicable"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Error occurrence timestamp"
+          }
+        }
+      }
+    }
+  }
+}

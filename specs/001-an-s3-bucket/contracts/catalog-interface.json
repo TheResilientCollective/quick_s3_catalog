@@ -1,0 +1,327 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Catalog Interface API Contracts",
+    "version": "1.0.0",
+    "description": "JavaScript library interface contracts for dataset catalog operations"
+  },
+  "paths": {
+    "/catalog/load": {
+      "post": {
+        "summary": "Load catalog from S3 bucket",
+        "description": "Initialize catalog by scanning S3 bucket and parsing metadata",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogLoadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Catalog loaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogLoadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid bucket configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/search": {
+      "post": {
+        "summary": "Search datasets",
+        "description": "Search datasets by text query in title and description",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/datasets": {
+      "get": {
+        "summary": "Get all datasets",
+        "description": "Retrieve all datasets organized by top-level folder sections",
+        "responses": {
+          "200": {
+            "description": "Dataset list organized by sections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionedDatasetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CatalogLoadRequest": {
+        "type": "object",
+        "required": ["bucketName", "region"],
+        "properties": {
+          "bucketName": {
+            "type": "string",
+            "description": "S3 bucket name containing datasets"
+          },
+          "region": {
+            "type": "string",
+            "description": "AWS region of the bucket"
+          },
+          "prefix": {
+            "type": "string",
+            "description": "Optional prefix to limit scan scope"
+          }
+        }
+      },
+      "CatalogLoadResponse": {
+        "type": "object",
+        "required": ["success", "datasetCount"],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "datasetCount": {
+            "type": "integer",
+            "description": "Number of datasets loaded"
+          },
+          "invalidCount": {
+            "type": "integer",
+            "description": "Number of invalid metadata files"
+          },
+          "loadTime": {
+            "type": "number",
+            "description": "Load time in milliseconds"
+          }
+        }
+      },
+      "SearchRequest": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Search query text"
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "required": ["sections", "totalResults"],
+        "properties": {
+          "sections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Dataset"
+              }
+            },
+            "description": "Search results organized by section (data, health, tijuana)"
+          },
+          "totalResults": {
+            "type": "integer",
+            "description": "Total number of matching datasets across all sections"
+          },
+          "searchTime": {
+            "type": "number",
+            "description": "Search execution time in milliseconds"
+          }
+        }
+      },
+      "SectionedDatasetResponse": {
+        "type": "object",
+        "required": ["sections"],
+        "properties": {
+          "sections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Dataset"
+              }
+            },
+            "description": "Datasets organized by top-level sections (data, health, tijuana)"
+          }
+        }
+      },
+      "Dataset": {
+        "type": "object",
+        "required": ["id", "title", "description", "isValid", "section", "projectPath"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique dataset identifier"
+          },
+          "title": {
+            "type": "string",
+            "description": "Dataset title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Dataset description"
+          },
+          "creator": {
+            "type": "string",
+            "description": "Dataset creator"
+          },
+          "dateCreated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation date"
+          },
+          "distribution": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Distribution"
+            }
+          },
+          "metadataUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to metadata.json file"
+          },
+          "isValid": {
+            "type": "boolean",
+            "description": "Whether metadata is valid"
+          },
+          "section": {
+            "type": "string",
+            "enum": ["data", "health", "tijuana"],
+            "description": "Top-level folder section"
+          },
+          "projectPath": {
+            "type": "string",
+            "description": "Project path within section (e.g., 'sd_complaints', 'study-1')"
+          }
+        }
+      },
+      "Distribution": {
+        "type": "object",
+        "required": ["@type", "contentUrl"],
+        "properties": {
+          "@type": {
+            "type": "string",
+            "enum": ["DataDownload"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "contentUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "encodingFormat": {
+            "type": "string"
+          },
+          "contentSize": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "number", "minimum": 0}
+            ]
+          },
+          "uploadDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "datePublished": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "keywords": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "array", "items": {"type": "string"}}
+            ]
+          },
+          "license": {
+            "oneOf": [
+              {"type": "string", "format": "uri"},
+              {"type": "object"}
+            ]
+          },
+          "creator": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "object"}
+            ]
+          },
+          "inLanguage": {
+            "type": "string"
+          },
+          "measurementMethod": {
+            "type": "string"
+          },
+          "measurementTechnique": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "version": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "number"}
+            ]
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error", "message"],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}

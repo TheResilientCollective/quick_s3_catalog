@@ -1,0 +1,267 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "S3 Dataset Catalog API Contracts",
+    "version": "1.0.0",
+    "description": "API contracts for S3 bucket operations in dataset catalog"
+  },
+  "paths": {
+    "/bucket-scan": {
+      "get": {
+        "summary": "Scan S3 bucket for metadata files",
+        "description": "List all objects in S3 bucket to identify metadata.json files",
+        "responses": {
+          "200": {
+            "description": "Successful bucket scan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BucketScanResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied to S3 bucket",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metadata/{objectKey}": {
+      "get": {
+        "summary": "Fetch metadata.json file",
+        "description": "Retrieve and parse schema.org Dataset metadata from S3",
+        "parameters": [
+          {
+            "name": "objectKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "S3 object key for metadata.json file"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metadata successfully retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetMetadata"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Metadata file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BucketScanResponse": {
+        "type": "object",
+        "required": ["objects", "metadataFiles"],
+        "properties": {
+          "objects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/S3Object"
+            }
+          },
+          "metadataFiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Keys of metadata.json files found"
+          }
+        }
+      },
+      "S3Object": {
+        "type": "object",
+        "required": ["key", "lastModified", "size"],
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "S3 object key"
+          },
+          "lastModified": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last modification timestamp"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "File size in bytes"
+          },
+          "etag": {
+            "type": "string",
+            "description": "S3 ETag"
+          }
+        }
+      },
+      "DatasetMetadata": {
+        "type": "object",
+        "required": ["@type", "name", "description"],
+        "properties": {
+          "@context": {
+            "type": "string",
+            "enum": ["https://schema.org"]
+          },
+          "@type": {
+            "type": "string",
+            "enum": ["Dataset"]
+          },
+          "name": {
+            "type": "string",
+            "description": "Dataset title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Dataset description"
+          },
+          "creator": {
+            "oneOf": [
+              {"type": "string"},
+              {"$ref": "#/components/schemas/Organization"}
+            ]
+          },
+          "dateCreated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "distribution": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Distribution"
+            }
+          }
+        }
+      },
+      "Distribution": {
+        "type": "object",
+        "required": ["@type", "contentUrl"],
+        "properties": {
+          "@type": {
+            "type": "string",
+            "enum": ["DataDownload"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "contentUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "encodingFormat": {
+            "type": "string"
+          },
+          "contentSize": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "integer", "minimum": 0}
+            ]
+          },
+          "uploadDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "datePublished": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "keywords": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "array", "items": {"type": "string"}}
+            ]
+          },
+          "license": {
+            "oneOf": [
+              {"type": "string", "format": "uri"},
+              {"type": "object"}
+            ]
+          },
+          "creator": {
+            "oneOf": [
+              {"type": "string"},
+              {"$ref": "#/components/schemas/Organization"}
+            ]
+          },
+          "inLanguage": {
+            "type": "string"
+          },
+          "measurementMethod": {
+            "type": "string"
+          },
+          "measurementTechnique": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "version": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "number"}
+            ]
+          }
+        }
+      },
+      "Organization": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "@type": {
+            "type": "string",
+            "enum": ["Organization"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error", "message"],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

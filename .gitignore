@@ -1,0 +1,9 @@
+.gemini
+.env
+node_modules/
+/laywright-report/
+
+/est-results/
+/playwright-report/
+/test-results/
+/.claude/

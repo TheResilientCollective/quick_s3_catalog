@@ -1,0 +1,5 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="cli.js search" type="NodeJSConfigurationType" application-parameters="search tijuana" path-to-js-file="cli.js" working-dir="$PROJECT_DIR$">
+    <method v="2" />
+  </configuration>
+</component>
