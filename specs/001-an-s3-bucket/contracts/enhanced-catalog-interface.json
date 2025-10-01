@@ -1,0 +1,403 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Enhanced S3 Dataset Catalog Interface",
+    "version": "1.1.0",
+    "description": "Contract for S3 Dataset Catalog Browser with date display and deduplication features"
+  },
+  "paths": {
+    "/catalog/load": {
+      "get": {
+        "summary": "Load complete dataset catalog with enhanced metadata",
+        "description": "Returns all datasets with S3 lastModified timestamps and optional deduplication",
+        "parameters": [
+          {
+            "name": "deduplicate",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Enable title-based deduplication to show only latest versions"
+          },
+          {
+            "name": "dateFormat",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["relative", "absolute", "both"],
+              "default": "both"
+            },
+            "description": "Date format preference for lastModified display"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalog loaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnhancedCatalogResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error loading catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/search": {
+      "get": {
+        "summary": "Search datasets with deduplication support",
+        "description": "Search datasets by query with optional deduplication filtering",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Search query for dataset title and description"
+          },
+          {
+            "name": "deduplicate",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Apply deduplication to search results"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search completed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/datasets": {
+      "get": {
+        "summary": "Get all datasets with enhanced metadata",
+        "description": "Returns organized dataset sections with date and deduplication metadata",
+        "parameters": [
+          {
+            "name": "includeDuplicates",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "description": "Include duplicate datasets in response metadata"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Datasets retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/deduplication/config": {
+      "get": {
+        "summary": "Get deduplication configuration",
+        "responses": {
+          "200": {
+            "description": "Configuration retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeduplicationConfig"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Update deduplication configuration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeduplicationConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuration updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeduplicationConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EnhancedDataset": {
+        "type": "object",
+        "required": ["id", "title", "lastModified", "isValid", "section"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique dataset identifier"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Dataset title for display and deduplication"
+          },
+          "description": {
+            "type": "string",
+            "description": "Dataset description"
+          },
+          "creator": {
+            "type": "string",
+            "description": "Dataset creator"
+          },
+          "dateCreated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation date from schema.org metadata"
+          },
+          "lastModified": {
+            "type": "string",
+            "format": "date-time",
+            "description": "S3 object last modified timestamp"
+          },
+          "distribution": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Distribution"
+            }
+          },
+          "metadataUrl": {
+            "type": "string",
+            "description": "S3 key to metadata.json file"
+          },
+          "isValid": {
+            "type": "boolean",
+            "description": "Whether metadata parsing succeeded"
+          },
+          "section": {
+            "type": "string",
+            "description": "Top-level folder section"
+          },
+          "projectPath": {
+            "type": "string",
+            "description": "Directory path within section"
+          },
+          "isDuplicate": {
+            "type": "boolean",
+            "description": "Whether this dataset is a duplicate (not latest version)"
+          },
+          "duplicateCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of duplicate versions found"
+          }
+        }
+      },
+      "Distribution": {
+        "type": "object",
+        "properties": {
+          "@type": {
+            "type": "string",
+            "description": "Schema.org type"
+          },
+          "name": {
+            "type": "string",
+            "description": "Distribution name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Distribution description"
+          },
+          "contentUrl": {
+            "type": "string",
+            "description": "URL to data file"
+          },
+          "encodingFormat": {
+            "type": "string",
+            "description": "File format (CSV, JSON, etc.)"
+          },
+          "contentSize": {
+            "type": "integer",
+            "description": "File size in bytes"
+          }
+        }
+      },
+      "EnhancedCatalogResponse": {
+        "type": "object",
+        "required": ["sections", "metadata"],
+        "properties": {
+          "sections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/EnhancedDataset"
+              }
+            },
+            "description": "Datasets organized by section"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CatalogMetadata"
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "required": ["sections", "totalResults", "metadata"],
+        "properties": {
+          "sections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/EnhancedDataset"
+              }
+            }
+          },
+          "totalResults": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CatalogMetadata"
+          }
+        }
+      },
+      "DatasetsResponse": {
+        "type": "object",
+        "required": ["sections"],
+        "properties": {
+          "sections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/EnhancedDataset"
+              }
+            }
+          },
+          "duplicateGroups": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/EnhancedDataset"
+              }
+            },
+            "description": "Groups of duplicate datasets by title"
+          }
+        }
+      },
+      "CatalogMetadata": {
+        "type": "object",
+        "properties": {
+          "totalDatasets": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "validDatasets": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "invalidDatasets": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "duplicatesRemoved": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of duplicate datasets filtered out"
+          },
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deduplicationEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DeduplicationConfig": {
+        "type": "object",
+        "required": ["enabled", "strategy", "keepLatest"],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether deduplication is active"
+          },
+          "strategy": {
+            "type": "string",
+            "enum": ["title-based"],
+            "description": "Deduplication strategy"
+          },
+          "keepLatest": {
+            "type": "boolean",
+            "description": "Keep latest version based on lastModified"
+          },
+          "caseSensitive": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether title matching is case-sensitive"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error", "message"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error type"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "details": {
+            "type": "object",
+            "description": "Additional error details"
+          }
+        }
+      }
+    }
+  }
+}

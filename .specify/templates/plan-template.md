@@ -1,8 +1,8 @@
 
-# Implementation Plan: S3 Dataset Catalog Browser - Date Cards & Deduplication
+# Implementation Plan: [FEATURE]
 
-**Branch**: `001-an-s3-bucket` | **Date**: 2025-10-01 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/Users/valentin/development/dev_resilient/quick_s3_catalog/specs/001-an-s3-bucket/spec.md`
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
 ## Execution Flow (/plan command scope)
 ```
@@ -31,52 +31,29 @@
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-Enhancement to existing S3 Dataset Catalog Browser to add timestamp information from S3 object lastModified dates to dataset cards and implement deduplication logic to show only the latest version when multiple datasets have the same title. Technical approach involves extending the existing browser-based catalog service to incorporate S3 object metadata and adding filtering logic to the catalog index.
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
-**Language/Version**: JavaScript ES2020+, Node.js 18+ for CLI tools
-**Primary Dependencies**: AWS SDK for JavaScript, schema.org validation, DOM manipulation library, existing catalog-core modules
-**Storage**: S3 bucket (read-only access), JSON metadata files, no local persistence required
-**Testing**: Jest for unit tests, Playwright for integration tests, contract testing for S3 API
-**Target Platform**: Modern web browsers (Chrome 90+, Firefox 88+, Safari 14+), CLI tools for Node.js
-**Project Type**: web - frontend JavaScript library with backend CLI support tools
-**Performance Goals**: Flexible performance per clarifications - no specific timing constraints
-**Constraints**: Public read-only access, trust in the validity of schema.org Dataset JSON, deduplication based on title matching, lastModified timestamp from S3 objects
-**Scale/Scope**: Enhancement to existing catalog display for hundreds to thousands of datasets, adds date display and deduplication features
+**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
+**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: [single/web/mobile - determines source structure]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**I. Library-First Architecture**: ✅ PASS
-- Enhancement builds on existing catalog-core, catalog-ui, and catalog-cli modules
-- New date and deduplication features will extend existing library functionality
-- Clear separation maintained between data processing, presentation, and CLI
-
-**II. CLI Interface Standard**: ✅ PASS
-- Existing CLI tools will inherit date display and deduplication features
-- Text I/O protocol maintained for automation compatibility
-- JSON and human-readable output formats preserved
-
-**III. Test-Driven Development**: ✅ PASS
-- Contract tests will be enhanced for S3 object metadata handling
-- Integration tests for deduplication logic before implementation
-- Unit tests for date formatting and filtering before coding
-
-**IV. Integration Testing Focus**: ✅ PASS
-- S3 API integration tests critical for lastModified timestamp handling
-- Cross-browser compatibility testing for date display
-- Contract testing for enhanced dataset objects
-
-**V. Observability & Simplicity**: ✅ PASS
-- Simple date formatting and title-based deduplication - no complex algorithms
-- S3 API calls will maintain structured logging
-- YAGNI applied: no advanced date filtering or complex deduplication rules
+[Gates determined based on constitution file]
 
 ## Project Structure
 
 ### Documentation (this feature)
 ```
-specs/001-an-s3-bucket/
+specs/[###-feature]/
 ├── plan.md              # This file (/plan command output)
 ├── research.md          # Phase 0 output (/plan command)
 ├── data-model.md        # Phase 1 output (/plan command)
@@ -86,37 +63,50 @@ specs/001-an-s3-bucket/
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 ```
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
 src/
-├── catalog-core/           # Core S3 and schema.org functionality
-│   ├── s3-client.js       # Enhanced with lastModified timestamp handling
-│   ├── dataset-parser.js  # Enhanced to include S3 object metadata
-│   ├── catalog-service.js # Enhanced with deduplication logic
-│   ├── catalog-index.js   # Enhanced filtering for deduplication
-│   └── models.js          # Enhanced Dataset model with lastModified
-├── catalog-ui/            # Browser UI components
-│   ├── catalog-browser.js # Enhanced with deduplication options
-│   ├── search-filter.js   # Enhanced with date display toggle
-│   └── dataset-display.js # Enhanced to show lastModified dates
-└── catalog-cli/           # CLI interface
-    ├── browse-command.js  # Enhanced with deduplication flags
-    ├── search-command.js  # Enhanced with date and dedup options
-    └── export-command.js  # Enhanced to export dates and handle dedup
+├── models/
+├── services/
+├── cli/
+└── lib/
 
 tests/
-├── contract/              # S3 API and schema.org contract tests
-│   ├── s3-api.test.js    # Enhanced S3 API contracts
-│   └── schema-org.test.js # Enhanced schema.org Dataset contracts
-├── integration/           # End-to-end integration tests
-│   ├── catalog-browser.test.js # Enhanced catalog workflow tests
-│   └── cli-integration.test.js # Enhanced CLI command integration
-└── unit/                  # Unit tests for individual components
-    ├── dataset-parser.test.js  # Enhanced with date handling tests
-    ├── search-filter.test.js   # Enhanced with deduplication tests
-    └── catalog-service.test.js # Enhanced with date and dedup tests
+├── contract/
+├── integration/
+└── unit/
+
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: Web application structure maintained - existing frontend library with CLI support tools. The enhancement extends the existing catalog-core for data processing, catalog-ui for browser interactions, and catalog-cli for command-line interface per constitutional requirements.
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
 ## Phase 0: Outline & Research
 1. **Extract unknowns from Technical Context** above:
@@ -212,18 +202,18 @@ tests/
 *This checklist is updated during execution flow*
 
 **Phase Status**:
-- [x] Phase 0: Research complete (/plan command)
-- [x] Phase 1: Design complete (/plan command)
-- [x] Phase 2: Task planning complete (/plan command - describe approach only)
+- [ ] Phase 0: Research complete (/plan command)
+- [ ] Phase 1: Design complete (/plan command)
+- [ ] Phase 2: Task planning complete (/plan command - describe approach only)
 - [ ] Phase 3: Tasks generated (/tasks command)
 - [ ] Phase 4: Implementation complete
 - [ ] Phase 5: Validation passed
 
 **Gate Status**:
-- [x] Initial Constitution Check: PASS
-- [x] Post-Design Constitution Check: PASS
-- [x] All NEEDS CLARIFICATION resolved
-- [x] Complexity deviations documented
+- [ ] Initial Constitution Check: PASS
+- [ ] Post-Design Constitution Check: PASS
+- [ ] All NEEDS CLARIFICATION resolved
+- [ ] Complexity deviations documented
 
 ---
 *Based on Constitution v2.1.1 - See `/memory/constitution.md`*

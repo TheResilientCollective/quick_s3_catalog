@@ -1,276 +1,248 @@
-# Quickstart Guide: S3 Dataset Catalog Browser
+# Quickstart: S3 Dataset Catalog Browser - Date Cards & Deduplication
 
-## Prerequisites
-- Public S3 bucket with dataset files and metadata.json files
-- Modern web browser or Node.js 18+ environment
-- Basic understanding of schema.org Dataset structure
+**Feature**: 001-an-s3-bucket
+**Prerequisites**: research.md, data-model.md, contracts/
+**Date**: 2025-10-01
 
-## Installation
+## Test Scenarios
 
-### Browser Library
-```html
-<script type="module">
-  import { CatalogBrowser } from './src/catalog-ui/catalog-browser.js';
+This quickstart validates the enhanced S3 Dataset Catalog Browser features through executable test scenarios.
 
-  const catalog = new CatalogBrowser({
-    bucketName: 'resilentpublic',
-    endpoint: 'https://oss.resilientservice.mooo.com',
-    region: 'us-east-1' // or appropriate region
-  });
+### Scenario 1: Display S3 Object Timestamps on Dataset Cards
 
-  await catalog.load();
-</script>
-```
+**Objective**: Verify that dataset cards show lastModified dates from S3 objects
 
-### CLI Tool
-```bash
-npm install -g @quick-s3-catalog/cli
-
-# Browse datasets
-s3-catalog browse --bucket resilentpublic --endpoint https://oss.resilientservice.mooo.com
-
-# Search datasets
-s3-catalog search --bucket resilentpublic --endpoint https://oss.resilientservice.mooo.com --query "climate data"
-```
-
-## Basic Usage Examples
-
-### 1. Load and Display Catalog
+**Setup**:
 ```javascript
-import { CatalogService } from './src/catalog-core/catalog-service.js';
-
-const service = new CatalogService('resilentpublic', {
-  endpoint: 'https://oss.resilientservice.mooo.com',
-  region: 'us-east-1'
-});
-const sections = await service.loadCatalog();
-
-// Datasets are organized by top-level sections
-console.log('Available sections:', Object.keys(sections));
-// Example output: ['data', 'health', 'tijuana']
-
-console.log(`Data section has ${sections.data.length} datasets`);
-console.log(`Health section has ${sections.health.length} datasets`);
-console.log(`Tijuana section has ${sections.tijuana.length} datasets`);
-```
-
-### 2. Search Datasets
-```javascript
-const searchResults = service.search('climate');
-console.log(`Found ${searchResults.totalResults} matching datasets`);
-
-// Results are organized by section
-Object.entries(searchResults.sections).forEach(([section, datasets]) => {
-  if (datasets.length > 0) {
-    console.log(`\n${section.toUpperCase()} section:`);
-    datasets.forEach(dataset => {
-      console.log(`  ${dataset.projectPath} - ${dataset.title}`);
-    });
-  }
+// Load catalog with timestamp display enabled
+const browser = new CatalogBrowser({
+  selector: '#catalog-browser',
+  bucketName: 'test-bucket',
+  endpoint: 'https://test-endpoint.com',
+  showTimestamps: true
 });
 ```
 
-### 3. Access Download Links
+**Test Steps**:
+1. **Initialize catalog browser** with timestamp display enabled
+2. **Load catalog data** from S3 bucket containing metadata files
+3. **Verify S3 object timestamps** are captured during listObjects()
+4. **Check dataset cards** display formatted lastModified dates
+5. **Validate date formatting** shows both relative and absolute times
+
+**Expected Results**:
+- Each dataset card shows "Last updated: 2 days ago (Oct 1, 2025)"
+- Timestamps reflect actual S3 object lastModified values
+- Date formatting is user-friendly and localized
+- Tooltip shows precise timestamp on hover
+
+**Verification**:
 ```javascript
-// Access datasets from a specific section
-const datasetFromTijuana = sections.tijuana[0];
-datasetFromTijuana.distribution.forEach(file => {
-  console.log(`Download: ${file.name || file.encodingFormat} -> ${file.contentUrl}`);
-});
+// Test dataset object includes lastModified
+const datasets = await browser.catalogService.getDatasets();
+const dataset = datasets['data'][0];
+assert(dataset.lastModified instanceof Date);
+assert(dataset.lastModified <= new Date()); // Not in future
 
-// Example output:
-// Download: csv -> tijuana/sd_complaints/output/complaints_by_date.csv
-// Download: json -> tijuana/sd_complaints/output/complaints_by_date.json
+// Test UI display includes formatted date
+const cardElement = browser.datasetDisplay.render(dataset);
+const dateText = cardElement.querySelector('.dataset-timestamp').textContent;
+assert(dateText.includes('ago') || dateText.includes('2025'));
 ```
 
-### 4. Handle Invalid Metadata
+### Scenario 2: Title-Based Deduplication with Latest Version
+
+**Objective**: Verify deduplication shows only latest version of datasets with same title
+
+**Setup**:
 ```javascript
-const sections = await service.loadCatalog();
-let totalValid = 0, totalInvalid = 0;
+// Mock S3 data with duplicate titles and different timestamps
+const mockS3Objects = [
+  { Key: 'data/climate/v1/metadata.json', LastModified: new Date('2025-09-01') },
+  { Key: 'data/climate/v2/metadata.json', LastModified: new Date('2025-10-01') },
+  { Key: 'data/health/survey/metadata.json', LastModified: new Date('2025-09-15') }
+];
 
-Object.entries(sections).forEach(([section, datasets]) => {
-  const valid = datasets.filter(d => d.isValid).length;
-  const invalid = datasets.filter(d => !d.isValid).length;
+const mockDatasets = [
+  { title: 'Climate Dataset', lastModified: new Date('2025-09-01'), id: 'climate-v1' },
+  { title: 'Climate Dataset', lastModified: new Date('2025-10-01'), id: 'climate-v2' },
+  { title: 'Health Survey', lastModified: new Date('2025-09-15'), id: 'health-survey' }
+];
+```
 
-  console.log(`${section}: ${valid} valid, ${invalid} invalid`);
-  totalValid += valid;
-  totalInvalid += invalid;
+**Test Steps**:
+1. **Load catalog** with duplicate dataset titles
+2. **Enable deduplication** using browser controls
+3. **Verify duplicate detection** groups datasets by title
+4. **Check latest version selection** based on lastModified
+5. **Validate display** shows only latest version per title
+
+**Expected Results**:
+- 3 datasets load initially (2 climate + 1 health)
+- Deduplication reduces to 2 datasets (latest climate + health)
+- Latest climate dataset (v2, Oct 1) is shown, v1 is hidden
+- Health survey remains visible (no duplicates)
+- UI indicates "1 duplicate hidden" or similar
+
+**Verification**:
+```javascript
+// Test deduplication logic
+const allDatasets = await browser.catalogService.getDatasets();
+const dedupConfig = { enabled: true, strategy: 'title-based', keepLatest: true };
+const deduplicatedDatasets = browser.catalogService.deduplicateDatasets(allDatasets, dedupConfig);
+
+assert(allDatasets.totalCount === 3);
+assert(deduplicatedDatasets.totalCount === 2);
+assert(deduplicatedDatasets.duplicatesRemoved === 1);
+
+// Test UI shows correct datasets
+const climateDatasets = deduplicatedDatasets['data'].filter(d => d.title === 'Climate Dataset');
+assert(climateDatasets.length === 1);
+assert(climateDatasets[0].id === 'climate-v2'); // Latest version
+```
+
+### Scenario 3: Deduplication Toggle Control
+
+**Objective**: Verify users can toggle deduplication on/off with immediate UI updates
+
+**Setup**:
+```javascript
+// Catalog with duplicate datasets loaded
+const browser = new CatalogBrowser({
+  selector: '#catalog-browser',
+  bucketName: 'test-bucket',
+  deduplication: { enabled: false } // Start with deduplication off
 });
-
-console.log(`Total: ${totalValid} valid, ${totalInvalid} invalid`);
 ```
 
-## CLI Usage Examples
+**Test Steps**:
+1. **Load catalog** with deduplication disabled (show all datasets)
+2. **Count displayed datasets** (should include duplicates)
+3. **Toggle deduplication ON** using UI control
+4. **Verify immediate update** (duplicates hidden, count reduced)
+5. **Toggle deduplication OFF** (all datasets visible again)
 
-### Browse All Datasets
+**Expected Results**:
+- Initial load shows all datasets including duplicates
+- Toggle to ON reduces displayed count and shows "deduplicated" indicator
+- Toggle to OFF restores full dataset list
+- UI provides clear feedback about deduplication state
+- Performance is acceptable for toggle operations
+
+**Verification**:
+```javascript
+// Test toggle functionality
+const initialCount = browser.getDisplayedDatasetCount();
+browser.toggleDeduplication(true);
+const deduplicatedCount = browser.getDisplayedDatasetCount();
+browser.toggleDeduplication(false);
+const restoredCount = browser.getDisplayedDatasetCount();
+
+assert(deduplicatedCount < initialCount); // Some duplicates removed
+assert(restoredCount === initialCount);   // All datasets restored
+
+// Test UI state indicator
+const toggleElement = document.querySelector('.deduplication-toggle');
+assert(toggleElement.checked === false); // Currently off
+```
+
+### Scenario 4: Search with Deduplication
+
+**Objective**: Verify search results respect deduplication settings
+
+**Setup**:
+```javascript
+// Search with deduplication enabled
+const searchQuery = 'climate';
+const searchOptions = { deduplicate: true };
+```
+
+**Test Steps**:
+1. **Enable deduplication** in catalog settings
+2. **Perform search** for "climate" (matches multiple versions)
+3. **Verify search results** show only latest version
+4. **Disable deduplication** and repeat search
+5. **Confirm all versions** appear in non-deduplicated search
+
+**Expected Results**:
+- Search with deduplication ON returns 1 climate dataset (latest)
+- Search with deduplication OFF returns 2 climate datasets (all versions)
+- Search metadata indicates deduplication status
+- Search performance remains acceptable
+
+**Verification**:
+```javascript
+// Test search with deduplication
+const dedupResults = await browser.search('climate', { deduplicate: true });
+const fullResults = await browser.search('climate', { deduplicate: false });
+
+assert(dedupResults.totalResults < fullResults.totalResults);
+assert(dedupResults.metadata.deduplicationEnabled === true);
+assert(fullResults.metadata.deduplicationEnabled === false);
+```
+
+### Scenario 5: CLI Integration with Enhanced Features
+
+**Objective**: Verify CLI commands support date display and deduplication options
+
+**Setup**:
 ```bash
-s3-catalog browse --bucket resilentpublic --endpoint https://oss.resilientservice.mooo.com
-# Output: Datasets organized by sections with expandable display
-
-s3-catalog browse --bucket resilentpublic --endpoint https://oss.resilientservice.mooo.com --format json
-# Output: JSON object with sections containing dataset arrays
+# CLI commands with new flags
+node cli.js browse --show-dates --deduplicate
+node cli.js search "health" --show-dates --no-deduplicate
 ```
 
-### Search Operations
+**Test Steps**:
+1. **Run browse command** with date display enabled
+2. **Verify CLI output** includes formatted timestamps
+3. **Run browse with deduplication** enabled
+4. **Check dataset count reduction** in CLI output
+5. **Test search command** with date and deduplication flags
+
+**Expected Results**:
+- CLI browse output includes "Last Modified" column
+- Deduplication flag reduces output dataset count
+- Date formatting is consistent between CLI and browser
+- Help text documents new flags clearly
+
+**Verification**:
 ```bash
-s3-catalog search --bucket resilentpublic --endpoint https://oss.resilientservice.mooo.com --query "temperature"
-# Output: Matching datasets organized by section
+# Test CLI date display
+output=$(node cli.js browse --show-dates --format json)
+echo "$output" | jq '.datasets[0].lastModified' # Should contain timestamp
 
-s3-catalog search --bucket resilentpublic --endpoint https://oss.resilientservice.mooo.com --query "ocean data" --format json
-# Output: JSON object with sections containing matching datasets
+# Test CLI deduplication
+all_count=$(node cli.js browse --format json | jq '.datasets | length')
+dedup_count=$(node cli.js browse --deduplicate --format json | jq '.datasets | length')
+[ "$dedup_count" -le "$all_count" ] # Deduplication reduces or maintains count
 ```
 
-### Export Dataset Information
-```bash
-s3-catalog export --bucket resilentpublic --endpoint https://oss.resilientservice.mooo.com --output datasets.csv
-# Output: CSV file with dataset metadata
+## Integration Test Execution
 
-s3-catalog export --bucket resilentpublic --endpoint https://oss.resilientservice.mooo.com --output datasets.json --format json
-# Output: JSON file with complete dataset information
-```
+### Prerequisites Validation
+- [ ] S3 bucket accessible with test metadata files
+- [ ] Browser environment supports required JavaScript APIs
+- [ ] CLI environment has Node.js 18+ and dependencies installed
 
-## Expected S3 Bucket Structure
+### Test Data Setup
+- [ ] Create test metadata files with various timestamps
+- [ ] Include duplicate titles with different lastModified dates
+- [ ] Ensure valid and invalid metadata.json files for error testing
 
-```
-resilentpublic/
-├── data/
-│   ├── project-a/
-│   │   ├── output/
-│   │   │   ├── results.csv
-│   │   │   ├── results.json
-│   │   │   └── metadata.json        # Schema.org Dataset description
-│   │   └── raw/
-│   │       └── source-data.csv
-│   └── environmental-study/
-│       ├── output/
-│       │   ├── analysis.csv
-│       │   └── metadata.json
-│       └── raw/
-├── health/
-│   ├── covid-analysis/
-│   │   ├── output/
-│   │   │   ├── cases.csv
-│   │   │   └── metadata.json
-│   │   └── raw/
-│   └── survey-results/
-│       ├── output/
-│       └── raw/
-└── tijuana/
-    ├── sd_complaints/
-    │   ├── output/
-    │   │   ├── complaints_by_date.csv
-    │   │   ├── complaints_by_date.json
-    │   │   └── metadata.json        # Your example file
-    │   └── raw/
-    └── border-crossing-data/
-        ├── output/
-        └── raw/
-```
+### Execution Checklist
+- [ ] Scenario 1: Timestamp display ✓
+- [ ] Scenario 2: Deduplication logic ✓
+- [ ] Scenario 3: Toggle controls ✓
+- [ ] Scenario 4: Search integration ✓
+- [ ] Scenario 5: CLI integration ✓
 
-## Sample metadata.json Structure
+### Success Criteria
+- All test scenarios pass without errors
+- UI updates are responsive and intuitive
+- Date formatting is consistent and user-friendly
+- Deduplication logic correctly identifies and handles duplicates
+- CLI and browser features have parity where applicable
 
-### Minimal Example (Recommended)
-```json
-{
-  "@type": "Dataset",
-  "name": "complaints_by_date",
-  "description": "A daily count of the odor complaints from the San Diego Air Pollution Control District Complaints ArcGIS service",
-  "distribution": [
-    {
-      "@type": "DataDownload",
-      "encodingFormat": "csv",
-      "contentUrl": "complaints/output/complaints_by_date.csv"
-    },
-    {
-      "@type": "DataDownload",
-      "encodingFormat": "json",
-      "contentUrl": "complaints/output/complaints_by_date.json"
-    }
-  ]
-}
-```
+## Phase 1 Complete
 
-### Comprehensive Example (With Optional Fields)
-```json
-{
-  "@context": "https://schema.org",
-  "@type": "Dataset",
-  "name": "Global Temperature Measurements",
-  "description": "Daily temperature readings from weather stations worldwide, covering 2020-2023.",
-  "creator": "Climate Research Institute",
-  "dateCreated": "2023-01-15T10:00:00Z",
-  "keywords": ["temperature", "climate", "weather stations", "global"],
-  "license": "https://creativecommons.org/licenses/by/4.0/",
-  "distribution": [
-    {
-      "@type": "DataDownload",
-      "name": "Temperature Data CSV",
-      "description": "Primary temperature dataset in CSV format",
-      "contentUrl": "climate-data/temperature.csv",
-      "encodingFormat": "text/csv",
-      "contentSize": "2048576",
-      "datePublished": "2023-01-15T10:00:00Z",
-      "measurementMethod": "Automatic weather station sensors",
-      "version": "1.2"
-    },
-    {
-      "@type": "DataDownload",
-      "name": "Temperature Data JSON",
-      "description": "Same temperature data in JSON format",
-      "contentUrl": "climate-data/temperature.json",
-      "encodingFormat": "application/json",
-      "contentSize": "3145728",
-      "datePublished": "2023-01-15T10:00:00Z",
-      "version": "1.2"
-    }
-  ]
-}
-```
-
-**Important Notes**:
-- Use relative paths in `contentUrl` - the catalog will resolve them to full S3 URLs
-- Simple format names ("csv", "json") or full MIME types ("text/csv", "application/json") both work
-- Only `@type`, `name`, `description`, and `distribution` are required
-- Multiple distributions allow offering the same data in different formats
-
-## Validation Test Scenarios
-
-### Test 1: Basic Catalog Loading
-1. **Setup**: S3 bucket with 3 datasets (1 in data/, 1 in health/, 1 in tijuana/), each with valid metadata.json
-2. **Action**: Load catalog using CatalogService
-3. **Expected**: Sections object returned with data: [1 dataset], health: [1 dataset], tijuana: [1 dataset], all marked as valid
-
-### Test 2: Search Functionality
-1. **Setup**: Catalog with datasets titled "Climate Data" (in data/), "Ocean Study" (in health/), "Weather Patterns" (in tijuana/)
-2. **Action**: Search for "climate"
-3. **Expected**: Sections object returned with only data section containing "Climate Data" dataset, other sections empty
-
-### Test 3: Download Link Access
-1. **Setup**: Dataset with 2 distribution files
-2. **Action**: Access dataset.distribution array
-3. **Expected**: 2 distribution objects with valid S3 URLs
-
-### Test 4: Invalid Metadata Handling
-1. **Setup**: S3 bucket with 1 valid metadata.json and 1 malformed JSON file
-2. **Action**: Load catalog
-3. **Expected**: 2 dataset objects returned, 1 valid, 1 invalid
-
-### Test 5: CLI Browse Command
-1. **Setup**: Command line environment with catalog CLI installed
-2. **Action**: Run `s3-catalog browse --bucket resilentpublic --endpoint https://oss.resilientservice.mooo.com`
-3. **Expected**: Human-readable display with expandable sections (data, health, tijuana) containing their respective datasets
-
-## Error Handling Scenarios
-
-- **Bucket Access Denied**: Clear error message about S3 permissions
-- **Malformed JSON**: Dataset marked as invalid but still appears in catalog
-- **Missing Distribution Files**: Warning logged but dataset still usable
-- **Network Timeout**: Graceful retry with exponential backoff
-- **Empty Bucket**: Success response with empty dataset array
-
-## Performance Expectations
-
-- **Catalog Loading**: No specific timing requirements (per clarifications)
-- **Search Operations**: Real-time response for up to 1000 datasets
-- **Memory Usage**: Reasonable for browser environments
-- **Bundle Size**: Minimal dependencies for library-first architecture
+Quickstart scenarios defined and ready for test-driven development. All contracts and test cases prepared for implementation phase.

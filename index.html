@@ -3,29 +3,427 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>S3 Dataset Catalog</title>
+  <title>S3 Dataset Catalog - Enhanced Browser</title>
   <style>
-    body { font-family: sans-serif; margin: 2em; background-color: #f8f9fa; color: #212529; }
-    .catalog-browser { max-width: 900px; margin: auto; }
-    .search-input { width: 100%; padding: 0.5em; margin-bottom: 1em; font-size: 1em; border: 1px solid #ced4da; border-radius: 0.25rem; }
-    .dataset-section summary { font-size: 1.5em; font-weight: bold; cursor: pointer; padding: 0.5em 0; }
-    .dataset-section[open] summary { margin-bottom: 1em; }
-    .dataset-container { border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 1em; margin-bottom: 1em; background-color: #fff; }
-    .dataset-container.invalid { border-left: 5px solid #dc3545; }
-    .dataset-container h3 { margin-top: 0; }
-    .dataset-container ul { padding-left: 20px; }
-    .loading, .error, .no-results { text-align: center; font-size: 1.2em; color: #6c757d; }
+    /* Base styles */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 2em;
+      background-color: #f8f9fa;
+      color: #212529;
+      line-height: 1.6;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 2em;
+      padding: 2em;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 2.5em;
+      font-weight: 300;
+    }
+
+    .header p {
+      margin: 0.5em 0 0 0;
+      opacity: 0.9;
+      font-size: 1.1em;
+    }
+
+    /* Main catalog browser */
+    .catalog-browser {
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    /* Enhanced search filter styles */
+    .search-filter-container {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5em;
+      margin-bottom: 2em;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .search-input-container {
+      margin-bottom: 1em;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 0.75em;
+      font-size: 1em;
+      border: 2px solid #ced4da;
+      border-radius: 6px;
+      transition: border-color 0.2s;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .search-options-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+      align-items: center;
+      padding-top: 1em;
+      border-top: 1px solid #dee2e6;
+    }
+
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+
+    .toggle-input {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .toggle-label {
+      cursor: pointer;
+      font-weight: 500;
+      color: #495057;
+    }
+
+    .select-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+
+    .select-label {
+      font-weight: 500;
+      color: #495057;
+      white-space: nowrap;
+    }
+
+    .select-input {
+      padding: 0.5em;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      background: white;
+    }
+
+    .advanced-options-container {
+      margin-top: 1em;
+    }
+
+    .advanced-toggle {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 0.5em 1em;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      color: #6c757d;
+    }
+
+    .advanced-toggle:hover {
+      background: #e9ecef;
+    }
+
+    .advanced-content {
+      margin-top: 1em;
+      padding: 1em;
+      background: #f8f9fa;
+      border-radius: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+    }
+
+    /* Catalog status */
+    .catalog-status {
+      background: white;
+      border-radius: 8px;
+      padding: 1em;
+      margin-bottom: 1em;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .catalog-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+      align-items: center;
+    }
+
+    .stat {
+      background: #f8f9fa;
+      padding: 0.5em 1em;
+      border-radius: 20px;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
+
+    .stat.deduplication-active {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .stat.search-active {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    /* Dataset sections */
+    .dataset-section {
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 1.5em;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .dataset-section summary {
+      font-size: 1.3em;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 1em 1.5em;
+      background: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+      transition: background-color 0.2s;
+    }
+
+    .dataset-section summary:hover {
+      background: #e9ecef;
+    }
+
+    .section-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-count {
+      font-size: 0.9em;
+      color: #6c757d;
+      font-weight: normal;
+    }
+
+    .section-content {
+      padding: 0;
+    }
+
+    /* Dataset containers */
+    .dataset-container {
+      border-bottom: 1px solid #f1f3f4;
+      padding: 1.5em;
+      transition: background-color 0.2s;
+    }
+
+    .dataset-container:last-child {
+      border-bottom: none;
+    }
+
+    .dataset-container:hover {
+      background-color: #f8f9fa;
+    }
+
+    .dataset-container.invalid {
+      border-left: 4px solid #dc3545;
+      background-color: #fdf2f2;
+    }
+
+    .dataset-container h3 {
+      margin: 0 0 0.5em 0;
+      color: #212529;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+
+    .dataset-container p {
+      margin: 0.5em 0;
+      color: #495057;
+    }
+
+    .dataset-metadata {
+      margin: 1em 0;
+      font-size: 0.9em;
+    }
+
+    .dataset-metadata small {
+      color: #6c757d;
+    }
+
+    .dataset-timestamp {
+      margin-top: 0.5em;
+      padding: 0.5em;
+      background: #e3f2fd;
+      border-radius: 4px;
+      border-left: 3px solid #2196f3;
+    }
+
+    .dataset-timestamp small {
+      color: #1976d2;
+    }
+
+    .dataset-container ul {
+      margin: 1em 0;
+      padding-left: 1.5em;
+    }
+
+    .dataset-container li {
+      margin: 0.5em 0;
+    }
+
+    .dataset-container a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .dataset-container a:hover {
+      text-decoration: underline;
+    }
+
+    /* Deduplication indicators */
+    .duplicate-indicator {
+      opacity: 0.7;
+      font-size: 0.9em;
+    }
+
+    .kept-indicator {
+      color: #28a745;
+      font-size: 0.9em;
+    }
+
+    /* Loading, error, and empty states */
+    .loading, .error, .no-results {
+      text-align: center;
+      font-size: 1.2em;
+      color: #6c757d;
+      padding: 3em;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .error {
+      color: #dc3545;
+      border-left: 4px solid #dc3545;
+    }
+
+    .error-message.temporary {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #f8d7da;
+      color: #721c24;
+      padding: 1em;
+      border-radius: 6px;
+      border-left: 4px solid #dc3545;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 1000;
+      max-width: 300px;
+    }
+
+    /* Feature showcase panel */
+    .feature-showcase {
+      background: white;
+      border-radius: 8px;
+      padding: 2em;
+      margin-bottom: 2em;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .feature-showcase h3 {
+      margin-top: 0;
+      color: #495057;
+    }
+
+    .feature-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1em;
+      margin-top: 1em;
+    }
+
+    .feature-item {
+      padding: 1em;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 3px solid #667eea;
+    }
+
+    .feature-item h4 {
+      margin: 0 0 0.5em 0;
+      color: #495057;
+    }
+
+    .feature-item p {
+      margin: 0;
+      font-size: 0.9em;
+      color: #6c757d;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      body {
+        padding: 1em;
+      }
+
+      .header h1 {
+        font-size: 2em;
+      }
+
+      .search-options-container {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .catalog-stats {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .stat {
+        text-align: center;
+      }
+
+      .section-summary {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5em;
+      }
+
+      .feature-list {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
 
-  <h1>S3 Dataset Catalog Browser</h1>
+  <div class="header">
+    <h1>🚀 Enhanced S3 Dataset Catalog</h1>
+    <p>Real-time S3 timestamp display • Title-based deduplication • Advanced search & filtering</p>
+  </div>
+
+
   <div id="catalog-browser" class="catalog-browser"></div>
 
   <script type="module">
     import { CatalogBrowser } from './src/catalog-ui/catalog-browser.js';
+    import { DeduplicationConfig } from './src/catalog-core/browser/deduplication-config.js';
+    import { DateDisplayConfig } from './src/catalog-core/browser/date-display-config.js';
 
-    // Configuration for live S3 data
+    // Configuration for live S3 data with enhanced features
     const S3_CONFIG = {
       bucketName: 'resilentpublic',
       endpoint: 'https://oss.resilientservice.mooo.com'
@@ -34,41 +432,154 @@
     // Make S3 config globally available for download URL resolution
     window.S3_CONFIG = S3_CONFIG;
 
-    // Create catalog browser with live S3 configuration
-    const browser = new CatalogBrowser({
+    // Enhanced catalog browser configuration with deduplication and date display
+    const enhancedOptions = {
       selector: '#catalog-browser',
       bucketName: S3_CONFIG.bucketName,
-      endpoint: S3_CONFIG.endpoint
-    });
+      endpoint: S3_CONFIG.endpoint,
 
-    // Add connection test and error handling
+      // Enable deduplication with case-insensitive matching
+      deduplication: DeduplicationConfig.createEnabled({
+        caseSensitive: false,
+        keepLatest: true
+      }),
+
+      // Enable date display with browser-friendly formatting
+      dateDisplay: DateDisplayConfig.createForBrowser()
+    };
+
+    // Create enhanced catalog browser
+    const browser = new CatalogBrowser(enhancedOptions);
+
+    // Add enhanced error handling and demonstrations
     async function initializeCatalog() {
       try {
-        console.log('Initializing S3 Dataset Catalog with live data...');
-        console.log('S3 Endpoint:', S3_CONFIG.endpoint);
-        console.log('Bucket:', S3_CONFIG.bucketName);
+        console.log('🚀 Initializing Enhanced S3 Dataset Catalog...');
+        console.log('📡 S3 Endpoint:', S3_CONFIG.endpoint);
+        console.log('🗂️  Bucket:', S3_CONFIG.bucketName);
+        console.log('🔄 Deduplication: Enabled (case-insensitive, keep latest)');
+        console.log('📅 Date Display: Browser-optimized relative formatting');
 
-        await browser.load();
-        console.log('Catalog loaded successfully!');
-      } catch (error) {
-        console.error('Failed to load catalog from S3:', error);
-
-        // Show error message to user
+        // Show loading message
         const container = document.querySelector('#catalog-browser');
         container.innerHTML = `
-          <div style="text-align: center; padding: 2em; border: 1px solid #dc3545; border-radius: 0.25rem; background-color: #f8d7da; color: #721c24;">
-            <h3>Failed to Load Catalog</h3>
+          <div class="loading">
+            <h3>🔄 Loading Enhanced Catalog</h3>
+            <p>Fetching S3 objects and applying enhancements...</p>
+          </div>
+        `;
+
+        await browser.load();
+
+        console.log('✅ Enhanced catalog loaded successfully!');
+
+        // Demonstrate features
+        _demonstrateFeatures();
+
+      } catch (error) {
+        console.error('❌ Failed to load enhanced catalog:', error);
+
+        // Show enhanced error message
+        const container = document.querySelector('#catalog-browser');
+        container.innerHTML = `
+          <div class="error">
+            <h3>❌ Failed to Load Enhanced Catalog</h3>
             <p>Could not connect to S3 bucket: <strong>${S3_CONFIG.bucketName}</strong></p>
             <p>Endpoint: <strong>${S3_CONFIG.endpoint}</strong></p>
-            <p>Error: ${error.message}</p>
-            <small>Check browser console for more details</small>
+            <p><strong>Error:</strong> ${error.message}</p>
+            <details style="margin-top: 1em; text-align: left;">
+              <summary>Technical Details</summary>
+              <pre style="background: #f8f9fa; padding: 1em; border-radius: 4px; overflow-x: auto; margin-top: 0.5em;">${error.stack || error.toString()}</pre>
+            </details>
+            <p style="margin-top: 1em;"><small>💡 Check browser console for more details or try refreshing the page</small></p>
           </div>
         `;
       }
     }
 
+    // Demonstrate enhanced features
+    function _demonstrateFeatures() {
+      console.log('\n🎯 Enhanced Features Demo:');
+
+      // Get current statistics
+      const stats = browser.getStatistics();
+      console.log('📊 Statistics:', stats);
+
+      // Show deduplication configuration
+      const dedupConfig = browser.catalogService.getDeduplicationConfig();
+      console.log('🔄 Deduplication Config:', dedupConfig.toObject());
+
+      // Show date display configuration
+      const dateConfig = browser.catalogService.getDateDisplayConfig();
+      console.log('📅 Date Display Config:', dateConfig.toObject());
+
+      // Demonstrate programmatic control
+      setTimeout(() => {
+        console.log('\n🔧 Demonstrating programmatic control...');
+
+        // Example: Toggle deduplication after 5 seconds
+        console.log('Enabling deduplication in 5 seconds...');
+        setTimeout(() => {
+          browser.updateDisplayOptions({ enableDeduplication: true });
+          console.log('✅ Deduplication enabled!');
+        }, 5000);
+
+        // Example: Change date format after 10 seconds
+        setTimeout(() => {
+          browser.updateDisplayOptions({ dateFormat: 'both' });
+          console.log('✅ Date format changed to "both"!');
+        }, 10000);
+
+      }, 2000);
+    }
+
+    // Add global functions for console interaction
+    window.catalogDemo = {
+      browser: browser,
+      toggleDeduplication: () => {
+        const currentOptions = browser.searchFilter.getOptions();
+        browser.updateDisplayOptions({
+          enableDeduplication: !currentOptions.enableDeduplication
+        });
+        console.log('🔄 Deduplication toggled:', !currentOptions.enableDeduplication);
+      },
+      toggleDates: () => {
+        const currentOptions = browser.searchFilter.getOptions();
+        browser.updateDisplayOptions({
+          showDates: !currentOptions.showDates
+        });
+        console.log('📅 Date display toggled:', !currentOptions.showDates);
+      },
+      setDateFormat: (format) => {
+        browser.updateDisplayOptions({ dateFormat: format });
+        console.log('📅 Date format set to:', format);
+      },
+      search: (query) => {
+        browser.setSearchQuery(query);
+        console.log('🔍 Searching for:', query);
+      },
+      getStats: () => {
+        const stats = browser.getStatistics();
+        console.log('📊 Current statistics:', stats);
+        return stats;
+      },
+      refresh: () => {
+        browser.refresh();
+        console.log('🔄 Refreshing catalog...');
+      }
+    };
+
     // Initialize when page loads
     initializeCatalog();
+
+    // Add helpful console messages
+    console.log('\n🎮 Interactive Demo Commands:');
+    console.log('catalogDemo.toggleDeduplication() - Toggle deduplication on/off');
+    console.log('catalogDemo.toggleDates() - Toggle timestamp display');
+    console.log('catalogDemo.setDateFormat("relative"|"absolute"|"both") - Change date format');
+    console.log('catalogDemo.search("query") - Search datasets');
+    console.log('catalogDemo.getStats() - Get current statistics');
+    console.log('catalogDemo.refresh() - Refresh catalog data');
   </script>
 
 </body>
