@@ -1,0 +1,17 @@
+{
+  "@type": "Dataset",
+  "name": "complaints_by_date",
+  "description": "A daily count of the odor complaints from \n     the from San Diego Air Pollution Control District Complaints ArcGIS service\n        ",
+  "distribution": [
+    {
+      "@type": "DataDownload",
+      "encodingFormat": "csv",
+      "contentUrl": "tijuana/sd_complaints/output/complaints_by_date.csv"
+    },
+    {
+      "@type": "DataDownload",
+      "encodingFormat": "json",
+      "contentUrl": "tijuana/sd_complaints/output/complaints_by_date.json"
+    }
+  ]
+}

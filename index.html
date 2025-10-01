@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S3 Dataset Catalog</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; background-color: #f8f9fa; color: #212529; }
+    .catalog-browser { max-width: 900px; margin: auto; }
+    .search-input { width: 100%; padding: 0.5em; margin-bottom: 1em; font-size: 1em; border: 1px solid #ced4da; border-radius: 0.25rem; }
+    .dataset-section summary { font-size: 1.5em; font-weight: bold; cursor: pointer; padding: 0.5em 0; }
+    .dataset-section[open] summary { margin-bottom: 1em; }
+    .dataset-container { border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 1em; margin-bottom: 1em; background-color: #fff; }
+    .dataset-container.invalid { border-left: 5px solid #dc3545; }
+    .dataset-container h3 { margin-top: 0; }
+    .dataset-container ul { padding-left: 20px; }
+    .loading, .error, .no-results { text-align: center; font-size: 1.2em; color: #6c757d; }
+  </style>
+</head>
+<body>
+
+  <h1>S3 Dataset Catalog Browser</h1>
+  <div id="catalog-browser" class="catalog-browser"></div>
+
+  <script type="module">
+    import { CatalogBrowser } from './src/catalog-ui/catalog-browser.js';
+
+    // Configuration for live S3 data
+    const S3_CONFIG = {
+      bucketName: 'resilentpublic',
+      endpoint: 'https://oss.resilientservice.mooo.com'
+    };
+
+    // Make S3 config globally available for download URL resolution
+    window.S3_CONFIG = S3_CONFIG;
+
+    // Create catalog browser with live S3 configuration
+    const browser = new CatalogBrowser({
+      selector: '#catalog-browser',
+      bucketName: S3_CONFIG.bucketName,
+      endpoint: S3_CONFIG.endpoint
+    });
+
+    // Add connection test and error handling
+    async function initializeCatalog() {
+      try {
+        console.log('Initializing S3 Dataset Catalog with live data...');
+        console.log('S3 Endpoint:', S3_CONFIG.endpoint);
+        console.log('Bucket:', S3_CONFIG.bucketName);
+
+        await browser.load();
+        console.log('Catalog loaded successfully!');
+      } catch (error) {
+        console.error('Failed to load catalog from S3:', error);
+
+        // Show error message to user
+        const container = document.querySelector('#catalog-browser');
+        container.innerHTML = `
+          <div style="text-align: center; padding: 2em; border: 1px solid #dc3545; border-radius: 0.25rem; background-color: #f8d7da; color: #721c24;">
+            <h3>Failed to Load Catalog</h3>
+            <p>Could not connect to S3 bucket: <strong>${S3_CONFIG.bucketName}</strong></p>
+            <p>Endpoint: <strong>${S3_CONFIG.endpoint}</strong></p>
+            <p>Error: ${error.message}</p>
+            <small>Check browser console for more details</small>
+          </div>
+        `;
+      }
+    }
+
+    // Initialize when page loads
+    initializeCatalog();
+  </script>
+
+</body>
+</html>

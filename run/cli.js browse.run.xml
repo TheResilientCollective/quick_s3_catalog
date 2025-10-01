@@ -1,0 +1,5 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="cli.js browse" type="NodeJSConfigurationType" application-parameters="browse" path-to-js-file="cli.js" working-dir="$PROJECT_DIR$">
+    <method v="2" />
+  </configuration>
+</component>
